@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Smart Resume Analyzer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        font-family: "Inter", sans-serif;
+        background-color: #f0f2f5;
+        display: flex;
+        justify-content: center;
+        align-items: flex-start; /* Align to top for better content flow */
+        min-height: 100vh;
+        padding: 20px;
+        box-sizing: border-box;
+      }
+      .container {
+        background-color: #ffffff;
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        padding: 30px;
+        width: 100%;
+        max-width: 1000px;
+        display: flex;
+        flex-direction: column;
+        gap: 25px;
+      }
+      textarea {
+        min-height: 200px;
+        resize: vertical;
+        padding: 12px;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        font-size: 1rem;
+        line-height: 1.5;
+        transition: border-color 0.2s;
+      }
+      textarea:focus {
+        outline: none;
+        border-color: #6366f1; /* Tailwind indigo-500 */
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+      }
+      button {
+        padding: 12px 25px;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background-color 0.2s, transform 0.1s, box-shadow 0.2s;
+        background: linear-gradient(
+          to right,
+          #6366f1,
+          #8b5cf6
+        ); /* Indigo to Violet */
+        color: white;
+        border: none;
+        box-shadow: 0 4px 10px rgba(99, 102, 241, 0.3);
+      }
+      button:hover {
+        background: linear-gradient(
+          to right,
+          #4f46e5,
+          #7c3aed
+        ); /* Darker shades on hover */
+        transform: translateY(-1px);
+        box-shadow: 0 6px 15px rgba(99, 102, 241, 0.4);
+      }
+      button:active {
+        transform: translateY(0);
+        box-shadow: 0 2px 5px rgba(99, 102, 241, 0.2);
+      }
+      .result-section,
+      .llm-output-section {
+        background-color: #f8fafc;
+        border-radius: 10px;
+        padding: 20px;
+        border: 1px solid #e2e8f0;
+      }
+      .result-section h3,
+      .llm-output-section h3 {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: #1a202c;
+        margin-bottom: 15px;
+      }
+      .result-item {
+        margin-bottom: 10px;
+        font-size: 0.95rem;
+        color: #4a5568;
+      }
+      .result-item strong {
+        color: #2d3748;
+      }
+      .skill-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 10px;
+      }
+      .skill-tag {
+        background-color: #e0e7ff; /* Light indigo */
+        color: #4338ca; /* Darker indigo */
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 500;
+      }
+      .missing-skill-tag {
+        background-color: #fee2e2; /* Light red */
+        color: #dc2626; /* Darker red */
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 500;
+      }
+      .button-group {
+        display: flex;
+        gap: 15px;
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+      .llm-output-content {
+        white-space: pre-wrap; /* Preserve whitespace and line breaks */
+        font-size: 0.95rem;
+        color: #333;
+        background-color: #fff;
+        padding: 15px;
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+      }
+      .loading-indicator {
+        display: none; /* Hidden by default */
+        text-align: center;
+        padding: 10px;
+        font-size: 1rem;
+        color: #6366f1;
+        font-weight: 600;
+      }
+      .loading-indicator.active {
+        display: block;
+      }
+      @media (min-width: 768px) {
+        .input-section {
+          flex-direction: row;
+        }
+        .input-section > div {
+          flex: 1;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">
+        Smart Resume Analyzer
+      </h1>
+
+      <div class="input-section flex flex-col md:flex-row gap-6">
+        <div class="flex-1">
+          <label
+            for="resumeInput"
+            class="block text-gray-700 text-lg font-semibold mb-2"
+            >Your Resume</label
+          >
+          <textarea
+            id="resumeInput"
+            placeholder="Paste your resume text here..."
+            class="w-full"
+          ></textarea>
+        </div>
+        <div class="flex-1">
+          <label
+            for="jobDescriptionInput"
+            class="block text-gray-700 text-lg font-semibold mb-2"
+            >Job Description</label
+          >
+          <textarea
+            id="jobDescriptionInput"
+            placeholder="Paste the job description here..."
+            class="w-full"
+          ></textarea>
+        </div>
+      </div>
+
+      <div class="button-group">
+        <button id="analyzeButton">Analyze Resume</button>
+        <button id="optimizeResumeButton">✨ Optimize Resume</button>
+        <button id="draftCoverLetterButton">✨ Draft Cover Letter</button>
+        <button id="suggestCareerPathsButton">🚀 Suggest Career Paths</button>
+        <button id="recommendCoursesButton">📚 Recommend Courses</button>
+      </div>
+
+      <div id="results" class="result-section hidden">
+        <h3 class="text-gray-800">Analysis Results</h3>
+        <p class="result-item">
+          <strong>Overall Fit Score:</strong> <span id="fitScore"></span>%
+        </p>
+        <p class="result-item">
+          <strong>Text Similarity:</strong> <span id="textSimilarity"></span>
+        </p>
+        <p class="result-item">
+          <strong>Skill Match Percentage:</strong>
+          <span id="skillMatchPercentage"></span>%
+        </p>
+
+        <div class="mt-4">
+          <p class="text-gray-700 font-semibold mb-2">Common Skills:</p>
+          <div id="commonSkills" class="skill-list"></div>
+        </div>
+
+        <div class="mt-4">
+          <p class="text-gray-700 font-semibold mb-2">
+            Missing Skills for Job:
+          </p>
+          <div id="missingSkills" class="skill-list"></div>
+        </div>
+      </div>
+
+      <div id="llmOutputSection" class="llm-output-section hidden">
+        <h3 id="llmOutputTitle" class="text-gray-800"></h3>
+        <div id="llmOutputContent" class="llm-output-content"></div>
+        <div id="llmLoadingIndicator" class="loading-indicator">
+          Generating...
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // --- JavaScript Implementation of the Analyzer Logic ---
+
+      // Simplified skill taxonomy (matches Python model's taxonomy)
+      const skillTaxonomy = {
+        programming: ["python", "java", "c++", "javascript", "r"],
+        "data analysis": [
+          "sql",
+          "excel",
+          "tableau",
+          "power bi",
+          "pandas",
+          "numpy",
+        ],
+        "machine learning": [
+          "tensorflow",
+          "pytorch",
+          "scikit-learn",
+          "keras",
+          "nlp",
+          "computer vision",
+        ],
+        cloud: ["aws", "azure", "gcp", "docker", "kubernetes"],
+        "soft skills": [
+          "communication",
+          "teamwork",
+          "leadership",
+          "problem-solving",
+        ],
+      };
+
+      // Function to extract skills (simplified, similar to Python's _extract_skills)
+      function extractSkills(text) {
+        const extractedSkills = new Set();
+        const lowerText = text.toLowerCase();
+
+        for (const category in skillTaxonomy) {
+          skillTaxonomy[category].forEach((skill) => {
+            if (lowerText.includes(skill)) {
+              extractedSkills.add(skill);
+            }
+          });
+        }
+        return Array.from(extractedSkills);
+      }
+
+      // --- TF-IDF and Cosine Similarity (Simplified JavaScript Implementation) ---
+      // This is a very basic TF-IDF and Cosine Similarity for demonstration.
+      // A full-fledged implementation would be more complex.
+
+      function tokenize(text) {
+        return text.toLowerCase().match(/\b\w+\b/g) || [];
+      }
+
+      function calculateTFIDF(corpus) {
+        const documents = corpus.map(tokenize);
+        const vocab = new Set();
+        documents.forEach((doc) => doc.forEach((word) => vocab.add(word)));
+        const vocabArray = Array.from(vocab);
+        const vocabMap = new Map(vocabArray.map((word, i) => [word, i]));
+
+        const tfVectors = documents.map((doc) => {
+          const vector = new Array(vocabArray.length).fill(0);
+          doc.forEach((word) => {
+            if (vocabMap.has(word)) {
+              vector[vocabMap.get(word)]++;
+            }
+            // Simple stop word removal (extend as needed)
+            if (
+              [
+                "a",
+                "an",
+                "the",
+                "is",
+                "are",
+                "and",
+                "or",
+                "to",
+                "in",
+                "of",
+                "for",
+              ].includes(word)
+            ) {
+              vector[vocabMap.get(word)] = 0;
+            }
+          });
+          return vector;
+        });
+
+        const idfVector = new Array(vocabArray.length).fill(0);
+        for (let i = 0; i < vocabArray.length; i++) {
+          const word = vocabArray[i];
+          let docCount = 0;
+          documents.forEach((doc) => {
+            if (doc.includes(word)) {
+              docCount++;
+            }
+          });
+          idfVector[i] = Math.log(corpus.length / (docCount + 1)); // +1 for smoothing
+        }
+
+        const tfidfVectors = tfVectors.map((tfVec) =>
+          tfVec.map((tf, i) => tf * idfVector[i])
+        );
+
+        return tfidfVectors;
+      }
+
+      function cosineSimilarity(vecA, vecB) {
+        let dotProduct = 0;
+        let magnitudeA = 0;
+        let magnitudeB = 0;
+
+        for (let i = 0; i < vecA.length; i++) {
+          dotProduct += vecA[i] * vecB[i];
+          magnitudeA += vecA[i] * vecA[i];
+          magnitudeB += vecB[i] * vecB[i];
+        }
+
+        magnitudeA = Math.sqrt(magnitudeA);
+        magnitudeB = Math.sqrt(magnitudeB);
+
+        if (magnitudeA === 0 || magnitudeB === 0) {
+          return 0;
+        }
+
+        return dotProduct / (magnitudeA * magnitudeB);
+      }
+
+      // --- Main Analyzer Function (simulating Python's calculate_fit_score) ---
+      function analyzeResumeAndJobDescription(resumeText, jobDescriptionText) {
+        const resumeSkills = new Set(extractSkills(resumeText));
+        const jobSkills = new Set(extractSkills(jobDescriptionText));
+
+        // Calculate text similarity using simplified TF-IDF and Cosine Similarity
+        const corpus = [resumeText, jobDescriptionText];
+        const tfidfVectors = calculateTFIDF(corpus);
+        const textSimilarity = cosineSimilarity(
+          tfidfVectors[0],
+          tfidfVectors[1]
+        );
+
+        // Calculate skill match
+        const commonSkills = Array.from(resumeSkills).filter((skill) =>
+          jobSkills.has(skill)
+        );
+        const missingSkills = Array.from(jobSkills).filter(
+          (skill) => !resumeSkills.has(skill)
+        );
+
+        let skillMatchPercentage = 0;
+        if (jobSkills.size > 0) {
+          skillMatchPercentage = (commonSkills.length / jobSkills.size) * 100;
+        }
+
+        // Combine text similarity and skill match (using same weights as Python model)
+        let overallFitScore =
+          (textSimilarity * 0.6 + (skillMatchPercentage / 100) * 0.4) * 100;
+        overallFitScore = Math.min(100, Math.max(0, overallFitScore)); // Ensure 0-100 range
+
+        return {
+          fit_score: overallFitScore.toFixed(2),
+          text_similarity: textSimilarity.toFixed(2),
+          skill_match_percentage: skillMatchPercentage.toFixed(2),
+          common_skills: commonSkills,
+          missing_skills: missingSkills,
+        };
+      }
+
+      // --- Gemini API Integration ---
+      async function callGeminiAPI(
+        prompt,
+        outputElementId,
+        titleElementId,
+        loadingIndicatorId
+      ) {
+        const outputElement = document.getElementById(outputElementId);
+        const titleElement = document.getElementById(titleElementId);
+        const loadingIndicator = document.getElementById(loadingIndicatorId);
+        const llmOutputSection = document.getElementById("llmOutputSection");
+
+        outputElement.textContent = ""; // Clear previous content
+        titleElement.textContent = ""; // Clear previous title
+        llmOutputSection.classList.remove("hidden"); // Show the section
+        loadingIndicator.classList.add("active"); // Show loading indicator
+
+        try {
+          let chatHistory = [];
+          chatHistory.push({ role: "user", parts: [{ text: prompt }] });
+          const payload = { contents: chatHistory };
+          const apiKey = ""; // Canvas will automatically provide this
+          const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+          const response = await fetch(apiUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+
+          const result = await response.json();
+
+          if (
+            result.candidates &&
+            result.candidates.length > 0 &&
+            result.candidates[0].content &&
+            result.candidates[0].content.parts &&
+            result.candidates[0].content.parts.length > 0
+          ) {
+            const text = result.candidates[0].content.parts[0].text;
+            outputElement.textContent = text;
+          } else {
+            outputElement.textContent =
+              "Error: Could not generate content. Please try again.";
+            console.error("Gemini API response structure unexpected:", result);
+          }
+        } catch (error) {
+          outputElement.textContent = `Error: ${error.message}. Please check your input and try again.`;
+          console.error("Error calling Gemini API:", error);
+        } finally {
+          loadingIndicator.classList.remove("active"); // Hide loading indicator
+        }
+      }
+
+      // --- DOM Manipulation and Event Listeners ---
+      document.getElementById("analyzeButton").addEventListener("click", () => {
+        const resumeInput = document.getElementById("resumeInput").value;
+        const jobDescriptionInput = document.getElementById(
+          "jobDescriptionInput"
+        ).value;
+        const resultsDiv = document.getElementById("results");
+
+        if (!resumeInput || !jobDescriptionInput) {
+          alert(
+            "Please paste both your resume and the job description to analyze."
+          );
+          return;
+        }
+
+        const analysisResults = analyzeResumeAndJobDescription(
+          resumeInput,
+          jobDescriptionInput
+        );
+
+        document.getElementById("fitScore").textContent =
+          analysisResults.fit_score;
+        document.getElementById("textSimilarity").textContent =
+          analysisResults.text_similarity;
+        document.getElementById("skillMatchPercentage").textContent =
+          analysisResults.skill_match_percentage;
+
+        const commonSkillsDiv = document.getElementById("commonSkills");
+        commonSkillsDiv.innerHTML = ""; // Clear previous results
+        analysisResults.common_skills.forEach((skill) => {
+          const span = document.createElement("span");
+          span.className = "skill-tag";
+          span.textContent = skill;
+          commonSkillsDiv.appendChild(span);
+        });
+
+        const missingSkillsDiv = document.getElementById("missingSkills");
+        missingSkillsDiv.innerHTML = ""; // Clear previous results
+        analysisResults.missing_skills.forEach((skill) => {
+          const span = document.createElement("span");
+          span.className = "missing-skill-tag";
+          span.textContent = skill;
+          missingSkillsDiv.appendChild(span);
+        });
+
+        resultsDiv.classList.remove("hidden"); // Show results section
+        document.getElementById("llmOutputSection").classList.add("hidden"); // Hide LLM output
+      });
+
+      document
+        .getElementById("optimizeResumeButton")
+        .addEventListener("click", async () => {
+          const resumeInput = document.getElementById("resumeInput").value;
+          const jobDescriptionInput = document.getElementById(
+            "jobDescriptionInput"
+          ).value;
+
+          if (!resumeInput || !jobDescriptionInput) {
+            alert(
+              "Please paste both your resume and the job description to get optimization suggestions."
+            );
+            return;
+          }
+
+          document.getElementById("llmOutputTitle").textContent =
+            "Resume Optimization Suggestions";
+          const prompt = `Given the following resume and job description, provide specific, actionable suggestions to optimize the resume to better match the job description. Focus on keywords, phrasing, and highlighting relevant experience.
+
+Resume:
+${resumeInput}
+
+Job Description:
+${jobDescriptionInput}
+
+Optimization Suggestions:`;
+
+          await callGeminiAPI(
+            prompt,
+            "llmOutputContent",
+            "llmOutputTitle",
+            "llmLoadingIndicator"
+          );
+        });
+
+      document
+        .getElementById("draftCoverLetterButton")
+        .addEventListener("click", async () => {
+          const resumeInput = document.getElementById("resumeInput").value;
+          const jobDescriptionInput = document.getElementById(
+            "jobDescriptionInput"
+          ).value;
+
+          if (!resumeInput || !jobDescriptionInput) {
+            alert(
+              "Please paste both your resume and the job description to draft a cover letter."
+            );
+            return;
+          }
+
+          document.getElementById("llmOutputTitle").textContent =
+            "Draft Cover Letter";
+          const prompt = `Draft a concise and professional cover letter based on the following resume and job description. Highlight how the candidate's skills and experience align with the job requirements. Use a formal tone.
+
+Resume:
+${resumeInput}
+
+Job Description:
+${jobDescriptionInput}
+
+Cover Letter Draft:`;
+
+          await callGeminiAPI(
+            prompt,
+            "llmOutputContent",
+            "llmOutputTitle",
+            "llmLoadingIndicator"
+          );
+        });
+
+      document
+        .getElementById("suggestCareerPathsButton")
+        .addEventListener("click", async () => {
+          const resumeInput = document.getElementById("resumeInput").value;
+          const jobDescriptionInput = document.getElementById(
+            "jobDescriptionInput"
+          ).value; // Include job description for context
+
+          if (!resumeInput) {
+            alert("Please paste your resume to get career path suggestions.");
+            return;
+          }
+
+          document.getElementById("llmOutputTitle").textContent =
+            "Suggested Career Paths";
+          const prompt = `Based on the following resume and considering the context of the provided job description (if any), suggest 3-5 potential next-best career paths. For each path, list 3-5 key skills required.
+
+Resume:
+${resumeInput}
+
+Job Description (if applicable):
+${jobDescriptionInput || "N/A"}
+
+Suggested Career Paths:`;
+
+          await callGeminiAPI(
+            prompt,
+            "llmOutputContent",
+            "llmOutputTitle",
+            "llmLoadingIndicator"
+          );
+        });
+
+      document
+        .getElementById("recommendCoursesButton")
+        .addEventListener("click", async () => {
+          const resumeInput = document.getElementById("resumeInput").value;
+          const jobDescriptionInput = document.getElementById(
+            "jobDescriptionInput"
+          ).value;
+
+          if (!resumeInput || !jobDescriptionInput) {
+            alert(
+              "Please paste both your resume and the job description to get course recommendations."
+            );
+            return;
+          }
+
+          // First, run the analysis to get missing skills
+          const analysisResults = analyzeResumeAndJobDescription(
+            resumeInput,
+            jobDescriptionInput
+          );
+          const missingSkills = analysisResults.missing_skills;
+
+          document.getElementById("llmOutputTitle").textContent =
+            "Recommended Courses";
+          let prompt;
+          if (missingSkills.length > 0) {
+            prompt = `Based on the following resume, the target job description, and the identified missing skills, recommend 3-5 online courses or certifications that would help bridge these skill gaps and advance the candidate's career. Suggest courses from platforms like Coursera, Udemy, edX, or similar.
+
+Resume:
+${resumeInput}
+
+Job Description:
+${jobDescriptionInput}
+
+Identified Missing Skills: ${missingSkills.join(", ")}
+
+Course Recommendations:`;
+          } else {
+            prompt = `Based on the following resume and job description, and assuming the candidate has a good fit, recommend 3-5 advanced online courses or certifications that would further enhance their profile for career advancement in this domain. Suggest courses from platforms like Coursera, Udemy, edX, or similar.
+
+Resume:
+${resumeInput}
+
+Job Description:
+${jobDescriptionInput}
+
+Course Recommendations:`;
+          }
+
+          await callGeminiAPI(
+            prompt,
+            "llmOutputContent",
+            "llmOutputTitle",
+            "llmLoadingIndicator"
+          );
+        });
+    </script>
+  </body>
+</html>
