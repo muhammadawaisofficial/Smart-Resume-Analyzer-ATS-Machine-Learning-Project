@@ -1,0 +1,2 @@
+# Smart-Resume-Analyzer-ATS-Machine-Learning-Project
+A smart, web-based tool that helps job seekers optimize their resumes. It provides instant analysis by comparing a resume against a job description, offering an overall fit score and a detailed skill breakdown. By leveraging the Gemini API, the application also generates AI-powered suggestions for resume optimization, drafts cover letters, and recommends relevant career paths and courses to help you land your next job.
